@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "3QL+v0q4xck=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\anton\\OneDrive\\Documents\\GitHub\\Virtual-Reality\\rt\\rt.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\anton\\.nuget\\packages\\microsoft.win32.systemevents\\8.0.0-rc.2.23479.6\\microsoft.win32.systemevents.8.0.0-rc.2.23479.6.nupkg.sha512",
+    "C:\\Users\\anton\\.nuget\\packages\\skiasharp\\3.119.1\\skiasharp.3.119.1.nupkg.sha512",
+    "C:\\Users\\anton\\.nuget\\packages\\skiasharp.nativeassets.macos\\3.119.1\\skiasharp.nativeassets.macos.3.119.1.nupkg.sha512",
+    "C:\\Users\\anton\\.nuget\\packages\\skiasharp.nativeassets.win32\\3.119.1\\skiasharp.nativeassets.win32.3.119.1.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,0 +1,77 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\anton\\OneDrive\\Documents\\GitHub\\Virtual-Reality\\rt\\rt.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\anton\\OneDrive\\Documents\\GitHub\\Virtual-Reality\\rt\\rt.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\anton\\OneDrive\\Documents\\GitHub\\Virtual-Reality\\rt\\rt.csproj",
+        "projectName": "rt",
+        "projectPath": "C:\\Users\\anton\\OneDrive\\Documents\\GitHub\\Virtual-Reality\\rt\\rt.csproj",
+        "packagesPath": "C:\\Users\\anton\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\anton\\OneDrive\\Documents\\GitHub\\Virtual-Reality\\rt\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\anton\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.Win32.SystemEvents": {
+              "target": "Package",
+              "version": "[8.0.0-rc.2.23479.6, )"
+            },
+            "SkiaSharp": {
+              "target": "Package",
+              "version": "[3.119.1, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Users\\anton\\.dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
