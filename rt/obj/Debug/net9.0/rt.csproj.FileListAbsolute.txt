@@ -21,3 +21,4 @@ C:\Users\anton\OneDrive\Documents\GitHub\Virtual-Reality\rt\obj\Debug\net9.0\ref
 C:\Users\anton\OneDrive\Documents\GitHub\Virtual-Reality\rt\obj\Debug\net9.0\rt.pdb
 C:\Users\anton\OneDrive\Documents\GitHub\Virtual-Reality\rt\obj\Debug\net9.0\rt.genruntimeconfig.cache
 C:\Users\anton\OneDrive\Documents\GitHub\Virtual-Reality\rt\obj\Debug\net9.0\ref\rt.dll
+C:\Users\anton\OneDrive\Documents\GitHub\Virtual-Reality\rt\obj\Debug\net9.0\rt.sourcelink.json
