@@ -76,7 +76,7 @@ namespace rt
             var epsilon = 0.001;
             var shadowIntersection = FindFirstIntersection(shadowRay, epsilon, distanceToLight - epsilon);
     
-            // === SKIP CT SCANS - they don't cast shadows ===
+            // Skip CT Scans
             if (shadowIntersection.Valid && shadowIntersection.Visible)
             {
                 // If the blocking object is a CT scan, ignore it and consider the point lit
@@ -150,13 +150,13 @@ namespace rt
                     // Iterate through all lights and accumulate their contributions
                     foreach (var light in lights)
                     {
-                        // === AMBIENT COMPONENT ===
+                        // AMBIENT COMPONENT
                         // Ambient light is always present, independent of shadows or surface orientation
                         // Simulates indirect/environmental lighting to prevent completely black areas
                         var ambientContribution = intersection.Material.Ambient * light.Ambient;
                         color += ambientContribution;
                         
-                        // === DIFFUSE AND SPECULAR COMPONENTS ===
+                        // DIFFUSE AND SPECULAR COMPONENTS
                         // Check if the point is illuminated by this light (not in shadow)
                         if (IsLit(intersection.Position, light))
                         {
@@ -171,12 +171,12 @@ namespace rt
                             // Negative values mean light is behind the surface
                             if (dotProduct > 0)
                             {
-                                // === DIFFUSE COMPONENT (Lambertian Reflection) ===
+                                // DIFFUSE COMPONENT (Lambertian Reflection)
                                 // Diffuse intensity proportional to cos(θ) (Lambert's cosine law)
                                 var diffuseContribution = intersection.Material.Diffuse * light.Diffuse * dotProduct;
                                 color += diffuseContribution;
                                 
-                                // === SPECULAR COMPONENT (Phong Reflection) ===
+                                // SPECULAR COMPONENT (Phong Reflection)
                                 // Calculate reflection vector: R = 2(N·L)N - L
                                 var reflectDir = (intersection.Normal * (2.0 * dotProduct) - lightDir).Normalize();
                                 
@@ -193,7 +193,6 @@ namespace rt
                     }
 
                     // Write final computed color to image
-                    // Color class handles clamping to [0,1] range during conversion
                     image.SetPixel(i, j, color);
                 }
             }

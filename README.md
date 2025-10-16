@@ -1,13 +1,13 @@
 ﻿# Virtual Reality Lab Assignment - Ray Tracer Implementation
 **Student:** Antonio Hus, Group 934
 
----
+***
 
 ## Overview
 
-This project implements a complete ray tracing engine in C# capable of rendering 3D scenes with realistic lighting, shadows, and support for various geometric primitives including volumetric data (CT scans).
+This project completes an implementation of a ray tracing engine in C# capable of rendering 3D scenes with realistic lighting, shadows, and support for various geometric primitives including volumetric data (CT scans) with alpha-composited transparency.
 
----
+***
 
 ## Completed Implementation Tasks
 
@@ -15,25 +15,20 @@ This project implements a complete ray tracing engine in C# capable of rendering
 
 **Implementation Details:**
 
-Implemented the ray-ellipsoid intersection algorithm using the geometric transformation approach. The key insight is to transform the ray into the ellipsoid's local coordinate space where it becomes a unit sphere, solve the simpler ray-sphere intersection, then transform the results back to world space.
+Implemented the ray-ellipsoid intersection algorithm using the **direct analytic method in world space**. The algorithm directly solves the intersection equation by substituting the parametric ray equation into the ellipsoid's implicit equation.
 
 **Algorithm Steps:**
 
-1. **Space Transformation:** Scale the ray origin and direction by the inverse of the ellipsoid's semi-axes lengths and radius to normalize the ellipsoid into a unit sphere
-2. **Quadratic Equation:** Solve the standard ray-sphere intersection quadratic equation: at^2 + bt + c = 0 where:
-   - a = dir · dir (dot product)
-   - b = 2(oc · dir)
-   - c = (oc · oc) - 1
-3. **Discriminant Test:** Check if b^2 - 4ac >= 0 for valid intersections
-4. **Distance Calculation:** Compute both intersection distances t0 and t1 using the quadratic formula
-5. **Closest Valid Hit:** Select the nearest intersection within the valid distance range [minDist, maxDist]
-6. **Normal Calculation:** Transform the normal back to world space using the gradient: (x/rx^2, y/ry^2, z/rz^2) normalized
-
-**Challenges Solved:**
-
-- Handling edge cases where the ray grazes the ellipsoid surface
-- Proper normal computation for non-uniform scaling
-- Preventing self-intersection by respecting the `minDist` parameter
+1. **Define Ellipsoid Parameters:** Extract actual semi-axes lengths (rx, ry, rz) by multiplying SemiAxesLength by Radius, and pre-compute squared values for efficiency
+2. **Ray-to-Center Vector:** Calculate oc = ray_origin - ellipsoid_center
+3. **Quadratic Coefficients:** Directly compute coefficients for at² + bt + c = 0 using the ellipsoid equation:
+   - a = (dir.X²/rx²) + (dir.Y²/ry²) + (dir.Z²/rz²)
+   - b = 2[(oc.X × dir.X/rx²) + (oc.Y × dir.Y/ry²) + (oc.Z × dir.Z/rz²)]
+   - c = (oc.X²/rx²) + (oc.Y²/ry²) + (oc.Z²/rz²) - 1
+4. **Discriminant Test:** Check if b² - 4ac ≥ 0 for valid intersections
+5. **Distance Calculation:** Compute both solutions t₀ = (-b - √discriminant)/(2a) and t₁ = (-b + √discriminant)/(2a)
+6. **Closest Valid Hit:** Choose t₀ (near intersection), or t₁ if t₀ < minDist, within [minDist, maxDist] range
+7. **Normal Calculation:** Compute gradient of implicit function at intersection point: N = (localPos.X/rx², localPos.Y/ry², localPos.Z/rz²) then normalize
 
 ---
 
@@ -41,93 +36,90 @@ Implemented the ray-ellipsoid intersection algorithm using the geometric transfo
 
 **Implementation Details:**
 
-Implemented a volumetric ray marching algorithm for rendering 3D medical CT scan data. This was the most complex component, requiring both ray-AABB intersection and adaptive sampling through the voxel grid.
+Implemented **volumetric ray marching with front-to-back alpha compositing** for rendering semi-transparent 3D CT scan data. This advanced technique allows viewing through outer semi-transparent layers to see interior structures, unlike simple surface detection.
 
 **Algorithm Steps:**
 
-1. **AABB Intersection:** First, perform axis-aligned bounding box intersection to determine where the ray enters and exits the volume bounds
-   - Test against all three pairs of parallel planes (X, Y, Z)
-   - Calculate near (t_min) and far (t_max) intersection parameters
-   - Early exit if ray misses the volume entirely
+1. **AABB Intersection:** Perform axis-aligned bounding box test to find volume entry/exit points
+   - Test against all three plane pairs (X, Y, Z)
+   - Calculate tMin (entry) and tMax (exit) parameters
+   - Early exit if ray misses volume
 
-2. **Ray Marching:** Step through the volume along the ray path
-   - Step size: half of the minimum voxel dimension for adequate sampling
-   - At each step, sample the voxel density value
-   - Use the color map to determine if the voxel is transparent
+2. **Ray Marching Setup:**
+   - Step size: 0.5 × min(voxel thickness) for adequate sampling
+   - Initialize accumulated color and alpha to zero
+   - Start slightly offset from entry point to avoid boundary artifacts
 
-3. **Surface Detection:** Stop at the first non-transparent voxel (alpha > 0)
-   - Calculate the surface normal using central differences (gradient approximation)
-   - Return intersection data for Phong shading
+3. **Front-to-Back Compositing:** March through volume accumulating semi-transparent layers:
+   - At each step, sample voxel density and map to color with alpha
+   - **Compositing formula:**
+      - weight = color.Alpha × (1 - accumulatedAlpha)
+      - accumulatedColor += color × weight
+      - accumulatedAlpha += weight
+   - Track first visible hit position for normal calculation
+   - Continue until accumulatedAlpha ≥ 1 (opaque) or ray exits volume
 
-**Technical Decisions:**
-
-- **Step Size:** Used 0.5 * min(thickness) for balance between quality and performance
-- **Normal Estimation:** Central differences method provides smooth gradients: gradient_f = (f(x+1) - f(x-1), f(y+1) - f(y-1), f(z+1) - f(z-1))
-- **Empty Space Skipping:** The AABB test efficiently skips regions where the ray doesn't intersect the volume
-
----
+4. **Intersection Return:** Return composited result with normal from first visible voxel using central difference gradient estimation
+***
 
 ### 3. Shadow Ray Testing (`RayTracer.cs` - `IsLit` method)
 
 **Implementation Details:**
 
-Implemented shadow testing to determine if a surface point receives direct illumination from a light source. This creates realistic shadows by casting a ray from the surface toward each light.
+Implemented shadow testing with **special handling for volumetric objects** to determine direct light visibility. Creates realistic hard shadows while treating CT scans as transparent.
 
 **Algorithm:**
 
-1. Calculate the direction vector from the surface point to the light position
-2. Measure the distance to the light
-3. Create a shadow ray starting at the surface point, pointing toward the light
-4. Test for intersections with all geometry in the scene
-5. If any intersection occurs between the surface and the light, the point is in shadow
+1. Construct shadow ray from surface point toward light position
+2. Calculate exact distance to light source
+3. Test for intersections using epsilon = 0.001 for minDist to prevent self-intersection
+4. Limit maxDist to just before the light (distanceToLight - epsilon)
+5. **CT Scan Exception:** If blocking object is a CtScan, ignore it and return true (treat as transparent)
+6. Return false if any non-volumetric geometry occludes, true if path is clear
 
-**Key Implementation Details:**
+***
 
-- Used a small epsilon value (1e-6) for `minDist` to prevent self-intersection artifacts
-- Limited intersection testing to the light distance to avoid false shadows from objects beyond the light
-- Returns `true` if the path is clear (lit), `false` if occluded (shadow)
-
----
-
-### 4. Primary Ray Generation and Phong Shading (`RayTracer.cs` - `Render` method)
+### 4. Phong Shading Rendering Pipeline (`RayTracer.cs` - `Render` method)
 
 **Implementation Details:**
 
-Completed the main rendering loop that generates camera rays for each pixel and computes final colors using the Phong reflection model.
+Implemented the complete rendering pipeline with proper Phong illumination model decomposition into ambient, diffuse, and specular components with shadow integration.
 
 **Camera Ray Generation:**
 
-1. **Coordinate Transformation:** Convert pixel coordinates (i, j) to view plane coordinates (x, y) using the `ImageToViewPlane` helper
-2. **Camera Space:** Construct the camera's orthonormal basis:
-   - Forward: camera.Direction
-   - Up: camera.Up
-   - Right: camera.Direction × camera.Up (cross product)
-3. **Ray Construction:** Calculate the point on the view plane and create a ray from camera position through that point
+1. Convert pixel indices to view plane coordinates centered at origin
+2. Construct camera basis: Forward (Direction), Up, Right (Up × Direction)
+3. Calculate view plane point: cameraPos + Direction × distance + Right × x + Up × y
+4. Create ray from camera position through view plane point
 
-**Phong Lighting Implementation:**
+**Phong Lighting Model (per light source):**
 
-For each light source, I computed three components:
+**1. Ambient Component** (always applied, outside shadow check):
+```
+I_ambient = material.Ambient × light.Ambient
+```
+Provides base illumination independent of geometry
 
-1. **Ambient:** I_ambient = k_ambient * L_ambient
-   - Always present, provides base illumination even in shadow
+**2. Shadow Test:** Call IsLit() to determine if light reaches surface
 
-2. **Diffuse:** I_diffuse = k_diffuse * L_diffuse * max(0, N · L)
-   - Lambert's cosine law for matte surfaces
-   - Depends on angle between surface normal (N) and light direction (L)
+**3. Diffuse Component** (only if lit and facing light):
+```
+dotProduct = normal · lightDirection
+if dotProduct > 0:
+    I_diffuse = material.Diffuse × light.Diffuse × dotProduct
+```
+Implements Lambertian reflectance
 
-3. **Specular:** I_specular = k_specular * L_specular * max(0, R · V)^shininess
-   - Creates glossy highlights
-   - Reflection vector: R = 2(N · L)N - L
-   - View vector (V): from surface to camera
+**4. Specular Component** (only if lit and facing light):
+```
+reflectDir = 2(normal · lightDir) × normal - lightDir
+specDot = max(0, reflectDir · viewDir)
+I_specular = material.Specular × light.Specular × (specDot^shininess)
+```
+Creates glossy highlights using Phong reflection model
 
-**Final Color:** I_total = I_ambient * ObjectColor + I_diffuse * ObjectColor + I_specular
+**Final Color Accumulation:**
 
-Where ObjectColor modulates ambient and diffuse, but not specular (highlights typically maintain light color)
+Iterate through all lights, summing contributions. Each light adds its ambient component plus (if lit) diffuse and specular components. This multi-light accumulation creates realistic scenes with complex illumination.
 
-**Shadow Integration:**
-
-- If `IsLit()` returns `false`, only ambient component is added
-- This creates realistic shadow regions with subtle ambient illumination
-
----
-
+***
