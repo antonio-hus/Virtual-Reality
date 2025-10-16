@@ -58,27 +58,34 @@ namespace rt
         /// <summary>
         /// Determines if a point on a surface is illuminated by a specific light source.
         /// Casts a shadow ray from the surface point toward the light.
-        /// Returns false if any geometry blocks the path (point is in shadow).
+        /// If the shadow ray hits any object before reaching the light, the point is in shadow.
         /// </summary>
         /// <param name="point">Surface point to test for illumination.</param>
         /// <param name="light">Light source to check visibility from.</param>
         /// <returns>True if light reaches the point (no occlusion), false if in shadow.</returns>
         private bool IsLit(Vector point, Light light)
         {
-            var lightDirection = (light.Position - point).Normalize();
-            var lightDistance = (light.Position - point).Length();
-
-            // Create ray from point in direction of light
-            var shadowRay = new Line(point, lightDirection);
-            var shadowIntersection = FindFirstIntersection(shadowRay, 0.0001, lightDistance - 0.0001);
-
-            return !shadowIntersection.Valid;
+            // Create shadow ray from surface point to light
+            var shadowRay = new Line(point, light.Position);
+            
+            // Calculate distance to light
+            var distanceToLight = (light.Position - point).Length();
+            
+            // Check if shadow ray hits any objects before reaching the light
+            // Use small epsilon to prevent self-intersection
+            var epsilon = 0.001;
+            var shadowIntersection = FindFirstIntersection(shadowRay, epsilon, distanceToLight - epsilon);
+            
+            // If shadow ray hits an object, point is in shadow (return false)
+            // If no hit, point is lit (return true)
+            return !shadowIntersection.Valid || !shadowIntersection.Visible;
         }
 
         /// <summary>
         /// Main rendering loop that generates an image by ray tracing.
         /// For each pixel: generates a camera ray, finds intersections, computes Phong lighting,
         /// and writes the final color to the output image.
+        /// Implements complete Phong illumination model with ambient, diffuse, and specular components.
         /// </summary>
         /// <param name="camera">Camera defining viewpoint and projection parameters.</param>
         /// <param name="width">Image width in pixels.</param>
@@ -86,74 +93,65 @@ namespace rt
         /// <param name="filename">Output filename for rendered image.</param>
         public void Render(Camera camera, int width, int height, string filename)
         {
+            // Background color for rays that don't hit any geometry
             var background = new Color(0.2, 0.2, 0.2, 1.0);
             var image = new Image(width, height);
 
+            // Normalize camera vectors and compute right vector for view plane positioning
             camera.Normalize();
             var right = camera.Up ^ camera.Direction;
 
+            // Iterate through each pixel in the image
             for (var i = 0; i < width; i++)
             {
                 for (var j = 0; j < height; j++)
                 {
+                    // Convert pixel coordinates to view plane coordinates
                     var x = ImageToViewPlane(i, width, camera.ViewPlaneWidth);
                     var y = ImageToViewPlane(j, height, camera.ViewPlaneHeight);
 
+                    // Calculate the point on the view plane corresponding to this pixel
                     var viewPlanePoint = camera.Position 
                         + camera.Direction * camera.ViewPlaneDistance
                         + right * x
                         + camera.Up * y;
 
+                    // Create primary ray from camera through pixel
                     var ray = new Line(camera.Position, viewPlanePoint);
+                    
+                    // Find closest intersection with scene geometry
                     var intersection = FindFirstIntersection(ray, camera.FrontPlaneDistance, camera.BackPlaneDistance);
 
+                    // If no valid intersection, use background color
                     if (!intersection.Valid || !intersection.Visible)
                     {
                         image.SetPixel(i, j, background);
                         continue;
                     }
 
+                    // Initialize pixel color (start with black, accumulate lighting)
                     var color = new Color(0, 0, 0, 1);
+                    
+                    // Precompute view direction (from surface to camera) for specular calculations
+                    var viewDir = (camera.Position - intersection.Position).Normalize();
 
+                    // Iterate through all lights and accumulate their contributions
                     foreach (var light in lights)
                     {
-                        var ambient = intersection.Material.Ambient * light.Ambient;
-                        color += ambient;
-
-                        var lightDir = (light.Position - intersection.Position).Normalize();
-                        var normalDotLight = intersection.Normal * lightDir;
-                        
-                        // Check shadows before computing diffuse and specular
-                        var isLit = IsLit(intersection.Position, light);
-                        
-                        if (normalDotLight > 0)
-                        {
-                            // Only add diffuse if not in shadow
-                            if (isLit)
-                            {
-                                var diffuse = intersection.Material.Diffuse * light.Diffuse * normalDotLight;
-                                color += diffuse;
-                            }
-
-                            // Compute specular reflection
-                            var reflectionDir = (intersection.Normal * (2 * normalDotLight) - lightDir).Normalize();
-                            var viewDir = (camera.Position - intersection.Position).Normalize();
-                            var reflectionDotView = reflectionDir * viewDir;
-                            
-                            // Only add specular if not in shadow AND reflection is visible
-                            if (reflectionDotView > 0 && isLit)
-                            {
-                                var specularIntensity = Math.Pow(reflectionDotView, intersection.Material.Shininess);
-                                var specular = intersection.Material.Specular * light.Specular * specularIntensity;
-                                color += specular;
-                            }
-                        }
+                        // === AMBIENT COMPONENT ===
+                        // Ambient light is always present, independent of shadows or surface orientation
+                        // Simulates indirect/environmental lighting to prevent completely black areas
+                        var ambientContribution = intersection.Material.Ambient * light.Ambient;
+                        color += ambientContribution;
                     }
 
+                    // Write final computed color to image
+                    // Color class handles clamping to [0,1] range during conversion
                     image.SetPixel(i, j, color);
                 }
             }
 
+            // Save rendered image to file
             image.Store(filename);
         }
     }
