@@ -59,6 +59,7 @@ namespace rt
         /// Determines if a point on a surface is illuminated by a specific light source.
         /// Casts a shadow ray from the surface point toward the light.
         /// If the shadow ray hits any object before reaching the light, the point is in shadow.
+        /// CT scans are excluded from shadow casting as they are volumetric/semi-transparent.
         /// </summary>
         /// <param name="point">Surface point to test for illumination.</param>
         /// <param name="light">Light source to check visibility from.</param>
@@ -67,18 +68,29 @@ namespace rt
         {
             // Create shadow ray from surface point to light
             var shadowRay = new Line(point, light.Position);
-            
+    
             // Calculate distance to light
             var distanceToLight = (light.Position - point).Length();
-            
+    
             // Check if shadow ray hits any objects before reaching the light
-            // Use small epsilon to prevent self-intersection
             var epsilon = 0.001;
             var shadowIntersection = FindFirstIntersection(shadowRay, epsilon, distanceToLight - epsilon);
-            
-            // If shadow ray hits an object, point is in shadow (return false)
-            // If no hit, point is lit (return true)
-            return !shadowIntersection.Valid || !shadowIntersection.Visible;
+    
+            // === SKIP CT SCANS - they don't cast shadows ===
+            if (shadowIntersection.Valid && shadowIntersection.Visible)
+            {
+                // If the blocking object is a CT scan, ignore it and consider the point lit
+                if (shadowIntersection.Geometry is CtScan)
+                {
+                    return true;
+                }
+        
+                // Hit a real object, point is in shadow
+                return false;
+            }
+    
+            // No hit, point is lit
+            return true;
         }
 
         /// <summary>
@@ -143,6 +155,41 @@ namespace rt
                         // Simulates indirect/environmental lighting to prevent completely black areas
                         var ambientContribution = intersection.Material.Ambient * light.Ambient;
                         color += ambientContribution;
+                        
+                        // === DIFFUSE AND SPECULAR COMPONENTS ===
+                        // Check if the point is illuminated by this light (not in shadow)
+                        if (IsLit(intersection.Position, light))
+                        {
+                            // Calculate light direction vector (from surface point to light)
+                            var lightDir = (light.Position - intersection.Position).Normalize();
+        
+                            // Calculate the angle between surface normal and light direction
+                            // Using dot product: N · L = cos(θ)
+                            var dotProduct = intersection.Normal * lightDir;
+        
+                            // Only apply diffuse/specular lighting if surface faces the light (dot product > 0)
+                            // Negative values mean light is behind the surface
+                            if (dotProduct > 0)
+                            {
+                                // === DIFFUSE COMPONENT (Lambertian Reflection) ===
+                                // Diffuse intensity proportional to cos(θ) (Lambert's cosine law)
+                                var diffuseContribution = intersection.Material.Diffuse * light.Diffuse * dotProduct;
+                                color += diffuseContribution;
+                                
+                                // === SPECULAR COMPONENT (Phong Reflection) ===
+                                // Calculate reflection vector: R = 2(N·L)N - L
+                                var reflectDir = (intersection.Normal * (2.0 * dotProduct) - lightDir).Normalize();
+                                
+                                // Calculate specular intensity: (R·V)^shininess
+                                // The dot product measures how aligned the reflection is with the view direction
+                                var specDot = Math.Max(0, reflectDir * viewDir);
+                                
+                                // Apply shininess exponent to create sharp or broad highlights
+                                var specularContribution = intersection.Material.Specular * light.Specular 
+                                    * Math.Pow(specDot, intersection.Material.Shininess);
+                                color += specularContribution;
+                            }
+                        }
                     }
 
                     // Write final computed color to image
