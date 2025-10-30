@@ -28,6 +28,12 @@ namespace rt
         /// </summary>
         private double Radius { get; }
         
+        /// <summary>
+        /// Rotation quaternion applied to the ellipsoid.
+        /// Defaults to NONE (no rotation). Used for animating or orienting the ellipsoid.
+        /// </summary>
+        public Quaternion Rotation { get; set;  } = Quaternion.NONE;
+        
         
         /// <summary>
         /// Creates an ellipsoid with custom material properties.
@@ -51,12 +57,35 @@ namespace rt
         /// <param name="semiAxesLength">Relative scaling factors for X, Y, Z axes.</param>
         /// <param name="radius">Base radius multiplier.</param>
         /// <param name="color">Base color used to derive material properties.</param>
+        public Ellipsoid(Vector center, Vector semiAxesLength, double radius, Material material, Color color) : base(material, color)
+        {
+            Center = center;
+            SemiAxesLength = semiAxesLength;
+            Radius = radius;
+        }
+
+        /// <summary>
+        /// Creates an ellipsoid with default material derived from color.
+        /// </summary>
+        /// <param name="center">Center position in world space.</param>
+        /// <param name="semiAxesLength">Relative scaling factors for X, Y, Z axes.</param>
+        /// <param name="radius">Base radius multiplier.</param>
+        /// <param name="color">Base color used to derive material properties.</param>
         public Ellipsoid(Vector center, Vector semiAxesLength, double radius, Color color) : base(color)
         {
             Center = center;
             SemiAxesLength = semiAxesLength;
             Radius = radius;
         }
+
+        /// <summary>
+        /// Copy constructor - creates a new ellipsoid from an existing one.
+        /// </summary>
+        /// <param name="e">The ellipsoid to copy.</param>
+        public Ellipsoid (Ellipsoid e) : this(new Vector(e.Center), new Vector(e.SemiAxesLength), e.Radius, new Material(e.Material), new Color(e.Color))
+        {
+        }
+
 
         /// <summary>
         /// Computes ray-ellipsoid intersection using the analytic method.

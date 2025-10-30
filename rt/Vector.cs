@@ -169,5 +169,25 @@ namespace rt
             }
             return this;
         }
+        
+        /// <summary>
+        /// Rotates this vector by the given quaternion - mutates this vector.
+        /// Uses the formula: v' = q * v * q^(-1) where v is treated as a pure quaternion.
+        /// Essential for rotating normals, geometry, and ray directions in 3D transformations.
+        /// </summary>
+        /// <param name="q">Unit quaternion representing the rotation to apply.</param>
+        public void Rotate(Quaternion q)
+        {
+            // Step 1: q * v (treat vector as pure quaternion with w=0)
+            var qv_w = -q.X * X - q.Y * Y - q.Z * Z;
+            var qv_x =  q.W * X + q.Y * Z - q.Z * Y;
+            var qv_y =  q.W * Y - q.X * Z + q.Z * X;
+            var qv_z =  q.W * Z + q.X * Y - q.Y * X;
+    
+            // Step 2: (q * v) * q^(-1), where q^(-1) = conjugate for unit quaternions
+            X = -qv_w * q.X + qv_x * q.W - qv_y * q.Z + qv_z * q.Y;
+            Y = -qv_w * q.Y + qv_x * q.Z + qv_y * q.W - qv_z * q.X;
+            Z = -qv_w * q.Z - qv_x * q.Y + qv_y * q.X + qv_z * q.W;
+        }
     }
 }

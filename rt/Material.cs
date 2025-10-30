@@ -64,6 +64,14 @@
             Specular = new Color(specular);
             Shininess = shininess;
         }
+        
+        /// <summary>
+        /// Copy constructor - creates a new material from an existing one.
+        /// </summary>
+        /// <param name="m">The material to copy.</param>
+        public Material(Material m) : this(m.Ambient, m.Diffuse, m.Specular, m.Shininess)
+        {
+        }
 
         /// <summary>
         /// Factory method to create a material from a single base color with reasonable defaults.
