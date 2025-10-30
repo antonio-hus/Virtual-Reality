@@ -75,7 +75,7 @@ namespace rt
 
         /// <summary>
         /// Computes ray-ellipsoid intersection using the analytic method.
-        /// Solves the quadratic equation directly in world space without coordinate transformation.
+        /// Transforms the ray into local space to handle rotation, then solves the quadratic equation.
         /// Returns the closest valid intersection within [minDist, maxDist] range.
         /// </summary>
         /// <param name="line">Ray to test for intersection.</param>
@@ -84,6 +84,20 @@ namespace rt
         /// <returns>Intersection with closest hit details, or Intersection.NONE if no valid hit.</returns>
         public override Intersection GetIntersection(Line line, double minDist, double maxDist)
         {
+            // Transform ray into ellipsoid's local space by applying inverse rotation
+            // This allows us to treat the ellipsoid as axis-aligned for intersection calculations
+            var localOrigin = new Vector(line.X0 - Center);
+            var localDir = new Vector(line.Dx);
+            
+            // Apply inverse rotation (conjugate: negate imaginary parts for unit quaternions)
+            // Check if rotation is not NONE (0, 1, 0, 0)
+            if (Rotation.W != 0 || Rotation.X != 1 || Rotation.Y != 0 || Rotation.Z != 0)
+            {
+                var invRotation = new Quaternion(Rotation.W, -Rotation.X, -Rotation.Y, -Rotation.Z);
+                localOrigin.Rotate(invRotation);
+                localDir.Rotate(invRotation);
+            }
+            
             // Define the semi-axes lengths of the ellipsoid
             var rx = SemiAxesLength.X * Radius;
             var ry = SemiAxesLength.Y * Radius;
@@ -94,19 +108,13 @@ namespace rt
             var ry2 = ry * ry;
             var rz2 = rz * rz;
 
-            // Vector from ellipsoid center to ray origin
-            var oc = line.X0 - Center;
-            
-            // Ray direction vector
-            var dir = line.Dx;
-
             // Calculate coefficients for the quadratic equation at² + bt + c = 0
-            // based on the standard ellipsoid intersection formula
-            var a = (dir.X * dir.X / rx2) + (dir.Y * dir.Y / ry2) + (dir.Z * dir.Z / rz2);
+            // using local space coordinates (after rotation)
+            var a = (localDir.X * localDir.X / rx2) + (localDir.Y * localDir.Y / ry2) + (localDir.Z * localDir.Z / rz2);
             
-            var b = 2.0 * ((oc.X * dir.X / rx2) + (oc.Y * dir.Y / ry2) + (oc.Z * dir.Z / rz2));
+            var b = 2.0 * ((localOrigin.X * localDir.X / rx2) + (localOrigin.Y * localDir.Y / ry2) + (localOrigin.Z * localDir.Z / rz2));
             
-            var c = (oc.X * oc.X / rx2) + (oc.Y * oc.Y / ry2) + (oc.Z * oc.Z / rz2) - 1.0;
+            var c = (localOrigin.X * localOrigin.X / rx2) + (localOrigin.Y * localOrigin.Y / ry2) + (localOrigin.Z * localOrigin.Z / rz2) - 1.0;
 
             // Calculate discriminant of the quadratic equation
             var discriminant = b * b - 4.0 * a * c;
@@ -139,20 +147,32 @@ namespace rt
                 return Intersection.NONE;
             }
 
-            // A valid intersection was found, so calculate the world-space position
+            // Calculate intersection point in world space (use original ray, not transformed)
             var position = line.CoordinateToPosition(t);
 
-            // Calculate the normal vector at the intersection point
+            // Calculate normal in local space first
+            var localPos = new Vector(position - Center);
+            if (Rotation.W != 0 || Rotation.X != 1 || Rotation.Y != 0 || Rotation.Z != 0)
+            {
+                var invRotation = new Quaternion(Rotation.W, -Rotation.X, -Rotation.Y, -Rotation.Z);
+                localPos.Rotate(invRotation);
+            }
+            
             // The normal of an ellipsoid at a point is the gradient of its implicit equation:
             // N = (2(px - cx)/rx², 2(py - cy)/ry², 2(pz - cz)/rz²)
             // The constant factor of 2 can be ignored since we normalize
-            var localPos = position - Center;
             var normal = new Vector(
                 localPos.X / rx2,
                 localPos.Y / ry2,
                 localPos.Z / rz2
             );
             normal.Normalize();
+            
+            // Transform normal back to world space by applying the rotation
+            if (Rotation.W != 0 || Rotation.X != 1 || Rotation.Y != 0 || Rotation.Z != 0)
+            {
+                normal.Rotate(Rotation);
+            }
 
             // Return the complete intersection data
             return new Intersection(true, true, this, line, t, normal, Material, Color);

@@ -56,42 +56,51 @@ namespace rt
         }
 
         /// <summary>
-        /// Determines if a point on a surface is illuminated by a specific light source.
-        /// Casts a shadow ray from the surface point toward the light.
-        /// If the shadow ray hits any object before reaching the light, the point is in shadow.
-        /// CT scans are excluded from shadow casting as they are volumetric/semi-transparent.
-        /// </summary>
-        /// <param name="point">Surface point to test for illumination.</param>
-        /// <param name="light">Light source to check visibility from.</param>
-        /// <returns>True if light reaches the point (no occlusion), false if in shadow.</returns>
-        private bool IsLit(Vector point, Light light)
-        {
-            // Create shadow ray from surface point to light
-            var shadowRay = new Line(point, light.Position);
+/// Determines if a point on a surface is illuminated by a specific light source.
+/// Casts a shadow ray from the surface point toward the light.
+/// If the shadow ray hits any non-CT-scan object before reaching the light, the point is in shadow.
+/// CT scans are excluded from shadow casting as they are volumetric/semi-transparent.
+/// </summary>
+/// <param name="point">Surface point to test for illumination.</param>
+/// <param name="light">Light source to check visibility from.</param>
+/// <returns>True if light reaches the point (no occlusion), false if in shadow.</returns>
+private bool IsLit(Vector point, Light light)
+{
+    // Create shadow ray from surface point to light
+    var shadowRay = new Line(point, light.Position);
     
-            // Calculate distance to light
-            var distanceToLight = (light.Position - point).Length();
+    // Calculate distance to light
+    var distanceToLight = (light.Position - point).Length();
     
-            // Check if shadow ray hits any objects before reaching the light
-            var epsilon = 0.001;
-            var shadowIntersection = FindFirstIntersection(shadowRay, epsilon, distanceToLight - epsilon);
+    var epsilon = 0.001;
+    var closestNonCTScan = Intersection.NONE;
     
-            // Skip CT Scans
-            if (shadowIntersection.Valid && shadowIntersection.Visible)
-            {
-                // If the blocking object is a CT scan, ignore it and consider the point lit
-                if (shadowIntersection.Geometry is CtScan)
-                {
-                    return true;
-                }
+    // Find closest intersection that is not a CT scan
+    foreach (var geometry in geometries)
+    {
+        // Skip CT scans
+        if (geometry is CtScan) continue;
         
-                // Hit a real object, point is in shadow
-                return false;
-            }
-    
-            // No hit, point is lit
-            return true;
+        var intersection = geometry.GetIntersection(shadowRay, epsilon, distanceToLight - epsilon);
+        
+        if (!intersection.Valid || !intersection.Visible) continue;
+        
+        if (!closestNonCTScan.Valid || intersection.T < closestNonCTScan.T)
+        {
+            closestNonCTScan = intersection;
         }
+    }
+    
+    // If we found a blocking object, point is in shadow
+    if (closestNonCTScan.Valid && closestNonCTScan.Visible)
+    {
+        return false;
+    }
+    
+    // No blocking object found, point is lit
+    return true;
+}
+
 
         /// <summary>
         /// Main rendering loop that generates an image by ray tracing.
