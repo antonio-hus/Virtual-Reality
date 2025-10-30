@@ -57,20 +57,6 @@ namespace rt
         /// <param name="semiAxesLength">Relative scaling factors for X, Y, Z axes.</param>
         /// <param name="radius">Base radius multiplier.</param>
         /// <param name="color">Base color used to derive material properties.</param>
-        public Ellipsoid(Vector center, Vector semiAxesLength, double radius, Material material, Color color) : base(material, color)
-        {
-            Center = center;
-            SemiAxesLength = semiAxesLength;
-            Radius = radius;
-        }
-
-        /// <summary>
-        /// Creates an ellipsoid with default material derived from color.
-        /// </summary>
-        /// <param name="center">Center position in world space.</param>
-        /// <param name="semiAxesLength">Relative scaling factors for X, Y, Z axes.</param>
-        /// <param name="radius">Base radius multiplier.</param>
-        /// <param name="color">Base color used to derive material properties.</param>
         public Ellipsoid(Vector center, Vector semiAxesLength, double radius, Color color) : base(color)
         {
             Center = center;
